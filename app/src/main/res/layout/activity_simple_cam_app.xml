@@ -1,30 +1,28 @@
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".SimpleCamAppActivity">
+    android:paddingLeft="@dimen/activity_horizontal_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    android:paddingBottom="@dimen/activity_vertical_margin"
+    android:orientation="vertical">
 
-    <LinearLayout
+    <Button
+        android:id="@+id/syncDropboxAccountButton"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingLeft="@dimen/activity_horizontal_margin"
-        android:paddingRight="@dimen/activity_horizontal_margin"
-        android:paddingTop="@dimen/activity_vertical_margin"
-        android:paddingBottom="@dimen/activity_vertical_margin"
-        android:orientation="vertical">
-        <Button
-            android:id="@+id/startCameraButton"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:text="@string/start_camera_button"
-            />
+        android:layout_height="match_parent"
+        android:text="@string/sync_dropbox_account"
+        android:layout_weight="1"
+        />
 
-        <ImageView
-            android:id="@+id/photoImageView"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:adjustViewBounds="true"
-            android:visibility="gone"
-            />
-    </LinearLayout>
-</ScrollView>
+    <Button
+        android:id="@+id/startCameraButton"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:text="@string/start_camera_button"
+        android:layout_weight="1"
+        android:enabled="false"
+        />
+
+</LinearLayout>
