@@ -13,16 +13,6 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:text="@string/sync_dropbox_account"
-        android:layout_weight="1"
-        />
-
-    <Button
-        android:id="@+id/startCameraButton"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:text="@string/start_camera_button"
-        android:layout_weight="1"
-        android:enabled="false"
         />
 
 </LinearLayout>
