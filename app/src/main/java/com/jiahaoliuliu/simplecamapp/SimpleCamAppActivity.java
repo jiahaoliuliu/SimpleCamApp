@@ -16,7 +16,10 @@ import android.widget.Button;
 import android.widget.Toast;
 
 import com.dropbox.sync.android.DbxAccountManager;
+import com.dropbox.sync.android.DbxException;
+import com.dropbox.sync.android.DbxFile;
 import com.dropbox.sync.android.DbxFileSystem;
+import com.dropbox.sync.android.DbxPath;
 
 import java.io.File;
 import java.io.IOException;
@@ -48,8 +51,13 @@ public class SimpleCamAppActivity extends ActionBarActivity {
     private Button mSyncDropboxAccountButton;
     private Button mStartCameraButton;
 
+    // The photo file
+    private File mPhotoFile;
+
     // Other data
     private String mCurrentPhotoPath;
+    private String mImageFileName;
+
     private boolean mExternalStorageAvailable;
     private boolean mExternalStorageWriteable;
 
@@ -71,7 +79,6 @@ public class SimpleCamAppActivity extends ActionBarActivity {
 
         mStartCameraButton = (Button)findViewById(R.id.startCameraButton);
         mStartCameraButton.setOnClickListener(onClickListener);
-
     }
 
     private View.OnClickListener onClickListener = new View.OnClickListener() {
@@ -96,16 +103,15 @@ public class SimpleCamAppActivity extends ActionBarActivity {
                     if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
                         try {
                             // Create the File where the photo should go
-                            File photoFile = createImageFile();
-                            if (photoFile != null) {
-                                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(photoFile));
+                            mPhotoFile = createImageFile();
+                            if (mPhotoFile != null) {
+                                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(mPhotoFile));
                                 startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
                             }
                         } catch (IOException ex) {
                             // Error occurred while creating the file
                             Log.e(TAG, "Error while creating a new file in the external public storage", ex);
                         }
-
                     }
                 break;
             }
@@ -118,9 +124,16 @@ public class SimpleCamAppActivity extends ActionBarActivity {
 
         // Sync the view
         if (mDbxAccountManager.hasLinkedAccount()) {
-            mSyncDropboxAccountButton.setEnabled(false);
-            mStartCameraButton.setEnabled(true);
+            try {
+                mDbxFileSystem = DbxFileSystem.forAccount(mDbxAccountManager.getLinkedAccount());
+                // Update the views
+                mSyncDropboxAccountButton.setEnabled(false);
+                mStartCameraButton.setEnabled(true);
+            } catch (DbxException.Unauthorized unauthorized) {
+                Log.e(TAG, "Error creating the DbxFileSystem ", unauthorized);
+            }
         } else {
+            // Update the views
             mSyncDropboxAccountButton.setEnabled(true);
             mStartCameraButton.setEnabled(false);
         }
@@ -141,11 +154,44 @@ public class SimpleCamAppActivity extends ActionBarActivity {
             }
         } else if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
             // Add the image to the gallery
-            Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-            File file = new File(mCurrentPhotoPath);
+            //Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+            File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM), mImageFileName);
+            //while (!file.exists()) {
+                Log.v(TAG, "The file exists? " + file.exists());
+                Log.v(TAG, "The path of the file is " + mCurrentPhotoPath);
+                Log.v(TAG, "IsFile? " + file.isFile());
+                Log.v(TAG, "Could it read? " + file.canRead());
+                //file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM), mImageFileName);
+                //file = new File("file:" + mCurrentPhotoPath);
+            //};
+            /*
             Uri contentUri = Uri.fromFile(file);
             mediaScanIntent.setData(contentUri);
             this.sendBroadcast(mediaScanIntent);
+            */
+            // Upload the image to Dropbox
+            /*
+            if (mPhotoFile == null) {
+                throw new NullPointerException("Error uploading the photo to Dropbox. The photo file cannot be null" );
+            }*/
+
+            /*
+            while (!file.exists()) {
+                Log.v(TAG, "The saved file exists? " + file.exists() + " " + new Date());
+            }*/
+
+            try {
+                DbxFile dropboxFile = mDbxFileSystem.create(new DbxPath(mImageFileName));
+                try {
+                    dropboxFile.writeFromExistingFile(file, false);
+                } catch (IOException e) {
+                    Log.e(TAG, "Error creating the dropbox file", e);
+                } finally {
+                    dropboxFile.close();
+                }
+            } catch (DbxException e) {
+                Log.e(TAG, "Error creating the dropbox file ", e);
+            }
         } else {
             super.onActivityResult(requestCode, resultCode, data);
         }
@@ -171,15 +217,15 @@ public class SimpleCamAppActivity extends ActionBarActivity {
 
         // Create an image file name
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-        String imageFileName = "JPEG_" + timeStamp + "_";
+        mImageFileName = "JPEG_" + timeStamp + "_" + ".jpg";
         File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
 
         // Make sure that the external storage exists
-        storageDir.mkdir();
-        File imageTmp = new File(storageDir, imageFileName+".jpg");
+        //storageDir.mkdir();
+        File tmpImageFile = new File(storageDir, mImageFileName);
 
         // Save a file: path for use with ACTION_VIEW intents
-        mCurrentPhotoPath = "file:" + imageTmp.getAbsolutePath();
-        return imageTmp;
+        mCurrentPhotoPath = tmpImageFile.getAbsolutePath();
+        return tmpImageFile;
     }
 }
