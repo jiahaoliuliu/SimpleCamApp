@@ -15,4 +15,15 @@
         android:text="@string/sync_dropbox_account"
         />
 
+    <TextView
+        android:id="@+id/noApkKeyTextView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:text="@string/error_message_no_apk_key"
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:visibility="gone"
+        />
+
 </LinearLayout>

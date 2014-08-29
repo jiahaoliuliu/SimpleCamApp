@@ -6,9 +6,11 @@ import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.dropbox.sync.android.DbxAccountManager;
@@ -23,8 +25,10 @@ public class SimpleCamAppActivity extends ActionBarActivity {
     private static final String TAG = "SimpleCamAppActivity";
     private static final int REQUEST_LINK_TO_DBX = 1000;
 
-    private static final String APP_KEY = "kwit9ifofwpmm2s";
-    private static final String APP_SECRET = "raff2qnop6lssta";
+    // TODO: Register your app and set the APP key and the APP secret
+    // https://www.dropbox.com/developers/apps
+    public static final String APP_KEY = "";
+    public static final String APP_SECRET = "";
 
     private Context mContext;
 
@@ -33,6 +37,7 @@ public class SimpleCamAppActivity extends ActionBarActivity {
 
     // Layout
     private Button mSyncDropboxAccountButton;
+    private TextView mNoAppKeyTextView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,11 +49,12 @@ public class SimpleCamAppActivity extends ActionBarActivity {
         setContentView(R.layout.activity_simple_cam_app);
 
         mContext = this;
-        mDbxAccountManager = DbxAccountManager.getInstance(getApplicationContext(), APP_KEY, APP_SECRET);
 
         // Link the layout
         mSyncDropboxAccountButton = (Button)findViewById(R.id.syncDropboxAccountButton);
         mSyncDropboxAccountButton.setOnClickListener(onClickListener);
+
+        mNoAppKeyTextView = (TextView)findViewById(R.id.noApkKeyTextView);
 
     }
 
@@ -67,6 +73,13 @@ public class SimpleCamAppActivity extends ActionBarActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (TextUtils.isEmpty(APP_KEY) || TextUtils.isEmpty(APP_SECRET)) {
+            mSyncDropboxAccountButton.setVisibility(View.GONE);
+            mNoAppKeyTextView.setVisibility(View.VISIBLE);
+            return;
+        }
+
+        mDbxAccountManager = DbxAccountManager.getInstance(getApplicationContext(), APP_KEY, APP_SECRET);
         // Check if the app was already linked. If so, go to the sync activity
         if (mDbxAccountManager.hasLinkedAccount()) {
             Intent startTakePhotoActivityIntent = new Intent(SimpleCamAppActivity.this, TakePhotoActivity.class);

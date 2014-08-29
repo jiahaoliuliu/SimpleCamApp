@@ -1,9 +1,11 @@
 package com.jiahaoliuliu.simplecamapp;
 
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -12,6 +14,7 @@ import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.dropbox.sync.android.DbxAccountManager;
@@ -36,9 +39,6 @@ public class TakePhotoActivity extends ActionBarActivity {
 
     private static final int REQUEST_IMAGE_CAPTURE = 1;
 
-    private static final String APP_KEY = "kwit9ifofwpmm2s";
-    private static final String APP_SECRET = "raff2qnop6lssta";
-
     private Context mContext;
 
     // Dropbox
@@ -47,6 +47,7 @@ public class TakePhotoActivity extends ActionBarActivity {
 
     // Layout
     private Button mStartCameraButton;
+    private ImageView mPhotoTakenImageView;
 
     // The photo file
     private File mPhotoFile;
@@ -58,6 +59,8 @@ public class TakePhotoActivity extends ActionBarActivity {
     private boolean mExternalStorageAvailable;
     private boolean mExternalStorageWriteable;
 
+    private Uri initialUri;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -68,10 +71,12 @@ public class TakePhotoActivity extends ActionBarActivity {
         setContentView(R.layout.take_photo_activity_layout);
 
         mContext = this;
-        mDbxAccountManager = DbxAccountManager.getInstance(getApplicationContext(), APP_KEY, APP_SECRET);
+        mDbxAccountManager = DbxAccountManager.getInstance(getApplicationContext(), SimpleCamAppActivity.APP_KEY, SimpleCamAppActivity.APP_SECRET);
 
         mStartCameraButton = (Button)findViewById(R.id.startCameraButton);
         mStartCameraButton.setOnClickListener(onClickListener);
+
+        mPhotoTakenImageView = (ImageView)findViewById(R.id.photoTakenImageView);
     }
 
     private View.OnClickListener onClickListener = new View.OnClickListener() {
@@ -96,6 +101,7 @@ public class TakePhotoActivity extends ActionBarActivity {
                             mPhotoFile = createImageFile();
                             if (mPhotoFile != null) {
                                 takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(mPhotoFile));
+                                initialUri = Uri.fromFile(mPhotoFile);
                                 startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
                             }
                         } catch (IOException ex) {
@@ -128,45 +134,8 @@ public class TakePhotoActivity extends ActionBarActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
-            // Add the image to the gallery
-            //Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-            File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM), mImageFileName);
-            //while (!file.exists()) {
-                Log.v(TAG, "The file exists? " + file.exists());
-                Log.v(TAG, "The path of the file is " + mCurrentPhotoPath);
-                Log.v(TAG, "IsFile? " + file.isFile());
-                Log.v(TAG, "Could it read? " + file.canRead());
-                //file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM), mImageFileName);
-                //file = new File("file:" + mCurrentPhotoPath);
-            //};
-            /*
-            Uri contentUri = Uri.fromFile(file);
-            mediaScanIntent.setData(contentUri);
-            this.sendBroadcast(mediaScanIntent);
-            */
-            // Upload the image to Dropbox
-            /*
-            if (mPhotoFile == null) {
-                throw new NullPointerException("Error uploading the photo to Dropbox. The photo file cannot be null" );
-            }*/
-
-            /*
-            while (!file.exists()) {
-                Log.v(TAG, "The saved file exists? " + file.exists() + " " + new Date());
-            }*/
-
-            try {
-                DbxFile dropboxFile = mDbxFileSystem.create(new DbxPath(mImageFileName));
-                try {
-                    dropboxFile.writeFromExistingFile(file, false);
-                } catch (IOException e) {
-                    Log.e(TAG, "Error creating the dropbox file", e);
-                } finally {
-                    dropboxFile.close();
-                }
-            } catch (DbxException e) {
-                Log.e(TAG, "Error creating the dropbox file ", e);
-            }
+            setImageView(initialUri);
+            uploadeImageToDropbox();
         } else {
             super.onActivityResult(requestCode, resultCode, data);
         }
@@ -196,11 +165,47 @@ public class TakePhotoActivity extends ActionBarActivity {
         File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
 
         // Make sure that the external storage exists
-        //storageDir.mkdir();
         File tmpImageFile = new File(storageDir, mImageFileName);
 
         // Save a file: path for use with ACTION_VIEW intents
         mCurrentPhotoPath = tmpImageFile.getAbsolutePath();
         return tmpImageFile;
+    }
+
+    // Several options to set the image
+    // Source: http://stackoverflow.com/questions/21984570/file-not-exist-android-image-taken-by-camera
+    private void setImageView(Uri imageFileUri) {
+        Log.v(TAG, "Initial uri " + imageFileUri.toString());
+
+        // Option 1
+        //mPhotoTakenImageView.setImageURI(imageFileUri);
+
+        // Option 2
+        getContentResolver().notifyChange(imageFileUri, null);
+        ContentResolver cr = getContentResolver();
+
+        try {
+            // Set the image from the camera to the imageview
+            Bitmap bitmap = MediaStore.Images.Media.getBitmap(cr, imageFileUri);
+            mPhotoTakenImageView.setImageBitmap(bitmap);
+        } catch (Exception e) {
+            Log.e(TAG, "Error setting the image view", e);
+        }
+    }
+
+    private void uploadeImageToDropbox() {
+        // Add the image to the gallery
+        try {
+            DbxFile dropboxFile = mDbxFileSystem.create(new DbxPath(mImageFileName));
+            try {
+                dropboxFile.writeFromExistingFile(mPhotoFile, false);
+            } catch (IOException e) {
+                Log.e(TAG, "Error creating the dropbox file", e);
+            } finally {
+                dropboxFile.close();
+            }
+        } catch (DbxException e) {
+            Log.e(TAG, "Error creating the dropbox file ", e);
+        }
     }
 }
